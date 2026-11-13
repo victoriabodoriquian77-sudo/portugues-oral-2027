@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Português do Zero ao Cem · oral 2027</title>
+<meta name="description" content="Aprender portugués de cero a cien con tu propio texto: diglot palabra por palabra, verbos explicados, juegos y un profe de IA.">
+<meta name="theme-color" content="#0e6f66">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e6f66'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23f7c948' font-family='Georgia'%3EP%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="app">
+  <!-- ============ barra lateral ============ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-txt">
+        <b>Zero ao Cem</b>
+        <span>português · 2027</span>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-btn" data-tab="inicio"><span class="ic">🏠</span> Inicio</button>
+      <button class="nav-btn" data-tab="ler"><span class="ic">📖</span> Leer / Diglot</button>
+      <button class="nav-btn" data-tab="oral"><span class="ic">🎤</span> Mi oral</button>
+      <button class="nav-btn" data-tab="vocab"><span class="ic">🃏</span> Vocabulario <span class="badge" id="due-badge" style="display:none">0</span></button>
+      <button class="nav-btn" data-tab="jogos"><span class="ic">🎮</span> Juegos</button>
+      <button class="nav-btn" data-tab="chat"><span class="ic">🤖</span> Chat IA</button>
+      <button class="nav-btn" data-tab="progresso"><span class="ic">📈</span> Progreso</button>
+      <button class="nav-btn" data-tab="ajustes"><span class="ic">⚙️</span> Ajustes</button>
+    </nav>
+
+    <div class="side-foot">
+      <div class="mini-stats">
+        <div class="mini"><b id="sf-dias">0</b><span>días</span></div>
+        <div class="mini"><b id="sf-cards">0</b><span>tarjetas</span></div>
+      </div>
+      <p class="tiny muted" style="margin-top:10px;line-height:1.35">Todo se guarda en este navegador. Sin cuentas, sin nube.</p>
+    </div>
+  </aside>
+
+  <!-- ============ contenido ============ -->
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">Português</div>
+      <h2 id="view-title">Inicio</h2>
+      <div class="xp-wrap">
+        <span class="streak zero" id="streak">🔥 0 días</span>
+        <div class="xp-bar"><i id="xp-fill"></i></div>
+        <span class="xp-txt" id="xp-txt">Nivel 1 · 0 XP</span>
+      </div>
+    </header>
+
+    <main class="view on" id="view"></main>
+  </div>
+</div>
+
+<!-- ============ navegación móvil ============ -->
+<nav class="mobile-nav">
+  <button data-tab="inicio"><span class="ic">🏠</span>Inicio</button>
+  <button data-tab="ler"><span class="ic">📖</span>Leer</button>
+  <button data-tab="oral"><span class="ic">🎤</span>Oral</button>
+  <button data-tab="vocab"><span class="ic">🃏</span>Repaso</button>
+  <button data-tab="jogos"><span class="ic">🎮</span>Juegos</button>
+  <button data-tab="chat"><span class="ic">🤖</span>IA</button>
+</nav>
+
+<!-- ============ scripts ============ -->
+<script src="js/func-words.js"></script>
+<script src="js/lexicon-data.js"></script>
+<script src="js/lexicon-extra.js"></script>
+<script src="js/conj.js"></script>
+<script src="js/analyzer.js"></script>
+<script src="js/oral-seed.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/games.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

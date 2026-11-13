@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tests · Português do Zero ao Cem</title>
+<style>
+  body{font:14px/1.6 ui-monospace,Menlo,monospace;background:#0f1513;color:#d8ffe9;padding:24px}
+  .ok{color:#4ade80}.bad{color:#ff7a6b}
+  h1{font-size:16px;color:#fff;margin:0 0 14px}
+  pre{background:#0a0f0d;padding:16px;border-radius:10px;white-space:pre-wrap;border:1px solid #1d2b26}
+</style>
+</head>
+<body>
+<h1>Tests de la app</h1>
+<pre id="out">corriendo…</pre>
+
+<script src="../js/func-words.js"></script>
+<script src="../js/lexicon-data.js"></script>
+<script src="../js/lexicon-extra.js"></script>
+<script src="../js/conj.js"></script>
+<script src="../js/analyzer.js"></script>
+<script src="../js/oral-seed.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/games.js"></script>
+<script>
+var linhas = [], falhas = 0, total = 0;
+function ok(nome, cond, extra) {
+  total++;
+  if (cond) linhas.push('  ✔ ' + nome);
+  else { falhas++; linhas.push('  ✘ ' + nome + (extra ? '  →  ' + extra : '')); }
+}
+function grupo(t) { linhas.push('\n' + t); }
+
+try {
+  /* ---------- conjugación ---------- */
+  grupo('MOTOR DE CONJUGACIÓN');
+  var casos = [
+    ['falar', 'presente', 0, 'falo'], ['falar', 'presente', 3, 'falamos'],
+    ['falar', 'perfeito', 2, 'falou'], ['falar', 'imperfeito', 0, 'falava'],
+    ['falar', 'futuro', 1, 'falarás'], ['falar', 'subjPresente', 5, 'falem'],
+    ['comer', 'presente', 2, 'come'], ['comer', 'perfeito', 5, 'comeram'],
+    ['partir', 'presente', 3, 'partimos'], ['partir', 'gerundio', null, 'partindo'],
+    ['ser', 'presente', 0, 'sou'], ['ser', 'presente', 5, 'são'],
+    ['ser', 'perfeito', 0, 'fui'], ['ser', 'subjPresente', 0, 'seja'],
+    ['estar', 'presente', 2, 'está'], ['estar', 'perfeito', 0, 'estive'],
+    ['ter', 'presente', 0, 'tenho'], ['ter', 'presente', 5, 'têm'],
+    ['ir', 'presente', 0, 'vou'], ['ir', 'imperfeito', 0, 'ia'],
+    ['querer', 'presente', 0, 'quero'], ['querer', 'perfeito', 0, 'quis'],
+    ['fazer', 'presente', 0, 'faço'], ['fazer', 'participio', null, 'feito'],
+    ['dizer', 'perfeito', 0, 'disse'], ['trazer', 'presente', 0, 'trago'],
+    ['pôr', 'presente', 0, 'ponho'], ['pôr', 'participio', null, 'posto'],
+    ['vir', 'presente', 2, 'vem'], ['ver', 'presente', 0, 'vejo'],
+    ['saber', 'presente', 0, 'sei'], ['poder', 'presente', 0, 'posso'],
+    ['estudar', 'presente', 1, 'estudas'], ['escrever', 'participio', null, 'escrito'],
+    ['abrir', 'participio', null, 'aberto'], ['falar', 'subjImperfeito', 0, 'falasse'],
+    ['falar', 'subjFuturo', 0, 'falar'], ['falar', 'infinitivoPessoal', 3, 'falarmos'],
+    ['falar', 'imperativo', 0, 'fala'], ['comer', 'imperativo', 1, 'coma']
+  ];
+  casos.forEach(function (c) {
+    var r = PZ.conj.conjugar(c[0]);
+    var v = r ? (c[2] === null ? r[c[1]] : (r[c[1]] || [])[c[2]]) : null;
+    ok(c[0] + ' · ' + c[1] + (c[2] === null ? '' : ' · ' + (c[2] + 1)) + ' = ' + c[3], v === c[3], 'dio ' + v);
+  });
+
+  /* ---------- índice inverso ---------- */
+  grupo('\nANÁLISIS INVERSO (forma → infinitivo)');
+  PZ.conj.construirIndice(window.ORAL_SEED.verbs.concat(Object.keys((window.LEX_DATA && window.LEX_DATA.words) || {}).filter(function (k) { return window.LEX_DATA.words[k].pos === 'verbo'; })));
+  var rev = [
+    ['quero', 'querer'], ['são', 'ser'], ['foi', 'ser'], ['tenho', 'ter'],
+    ['aprendendo', 'aprender'], ['inscrever', 'inscrever'], ['dirigir', 'dirigir'],
+    ['seja', 'ser'], ['conseguiu', 'conseguir'], ['cresceu', 'crescer'],
+    ['falares', 'falar'], ['ajudar', 'ajudar'], ['continue', 'continuar']
+  ];
+  rev.forEach(function (c) {
+    var a = PZ.conj.analisar(c[0]);
+    var infs = a ? a.map(function (x) { return x.inf; }) : [];
+    ok(c[0] + ' → ' + c[1], infs.indexOf(c[1]) >= 0, 'dio [' + infs.join(', ') + ']');
+  });
+
+  /* ---------- analizador / diglot ---------- */
+  grupo('\nANALIZADOR Y GLOSA');
+  var texto = window.ORAL_SEED.script.map(function (l) { return l.pt; }).join(' ');
+  var doc = PZ.ana.analisar(texto);
+  ok('detecta 6 frases', doc.frases.length === 6, doc.frases.length);
+  ok('detecta >90 palabras', doc.palavras.length > 90, doc.palavras.length);
+  var semDic = doc.palavras.filter(function (p) { return p.fonte === 'none'; });
+  ok('cubre todo el texto del oral', semDic.length === 0, semDic.map(function (p) { return p.w; }).join(', '));
+  var gl = doc.frases.map(function (f) { return PZ.ana.glosaFrase(f); }).join(' | ');
+  ok('glosa traduce "objetivos"', /objetivos/.test(gl));
+  ok('glosa traduce "gimnasio"', /gimnasio/.test(gl));
+  ok('glosa traduce "manejar"', /manejar/.test(gl));
+  ok('glosa no deja números raros', !/undefined|null|\[object/.test(gl), gl.slice(0, 120));
+
+  var f1 = PZ.ana.analisarPalavra('quero', { prev: '', prev2: '', next: '' });
+  ok('"quero" es verbo, presente, 1ª pers.', f1.pos === 'verbo' && f1.verbFicha.tempo === 'presente' && f1.verbFicha.pessoa === 'eu', f1.verbFicha && f1.verbFicha.titulo);
+  ok('"quero" da verbo original querer', f1.verbFicha.infinitivo === 'querer');
+
+  var f2 = PZ.ana.analisarPalavra('aprender', { prev: 'querer', prev2: '', next: '' });
+  ok('infinitivo tras modal se explica', f2.pos === 'verbo' && /verbo que ya está conjugado|infinitivo/i.test(f2.verbFicha.why || ''), f2.verbFicha && f2.verbFicha.why);
+
+  var f3 = PZ.ana.analisarPalavra('frequentando', { prev: 'continuar', prev2: '', next: '' });
+  ok('"frequentando" es gerundio de frequentar', f3.verbFicha.infinitivo === 'frequentar' && f3.verbFicha.tempo === 'gerundio');
+
+  var f4 = PZ.ana.analisarPalavra('academia', { prev: 'a', prev2: '', next: '' });
+  ok('"academia" es sustantivo femenino', f4.pos === 'sust' && f4.genero === 'f', f4.pos + '/' + f4.genero);
+
+  var f5 = PZ.ana.analisarPalavra('do', { prev: '', prev2: '', next: 'negócio' });
+  ok('"do" se explica como de + o', /de \+ o/.test(f5.nota || ''), f5.nota);
+
+  var f6 = PZ.ana.analisarPalavra('matérias', { prev: '', prev2: '', next: '' });
+  ok('"matérias" resuelve por plural', f6.fonte === 'lex-plural' && /materia/i.test(f6.es));
+
+  var f7 = PZ.ana.analisarPalavra('seja', { prev: 'que', prev2: 'quero', next: '' });
+  ok('"seja" → subjuntivo de ser', f7.verbFicha.infinitivo === 'ser' && /subjuntivo/i.test(f7.verbFicha.tempoNome));
+
+  /* ---------- almacén / SRS ---------- */
+  grupo('\nPROGRESO Y REPASO (SRS)');
+  try { localStorage.clear(); } catch (e) { }
+  var st = PZ.store.load();
+  ok('arranca en nivel 1', PZ.store.levelInfo().level === 1);
+  PZ.store.addXP(500);
+  ok('sube de nivel con XP', PZ.store.levelInfo().level > 1, PZ.store.levelInfo().level);
+  var r1 = PZ.store.addCard('falar', 'hablar', {});
+  ok('agrega tarjeta', r1.nuevo === true);
+  ok('no duplica tarjeta', PZ.store.addCard('falar', 'hablar', {}).nuevo === false);
+  ok('la tarjeta está para repasar', PZ.store.dueCards().length === 1);
+  PZ.store.rateCard(r1.card.id, 2);
+  ok('al puntuar "bien" sale de la cola', PZ.store.dueCards().length === 0);
+  PZ.store.rateCard(r1.card.id, 0);
+  ok('al puntuar "otra vez" vuelve en 10 min', PZ.store.dueCards().length === 0 && st.cards[0].interval === 0);
+
+  /* ---------- datos de los juegos ---------- */
+  grupo('\nDATOS DE LOS JUEGOS');
+  window.PZ.app = window.PZ.app || { doc: doc };
+  var banco = PZ.games.banco();
+  ok('hay banco de palabras (>40)', banco.length > 40, banco.length);
+  ok('todas tienen traducción', banco.every(function (p) { return p.pt && p.es; }));
+  var verbos = PZ.games.bancoVerbos();
+  ok('hay banco de verbos (>30)', verbos.length > 30, verbos.length);
+  ok('los verbos son conjugables', verbos.every(function (v) { return !!PZ.conj.conjugar(v.inf); }));
+
+  /* ---------- guía del oral ---------- */
+  grupo('\nCONTENIDO DE LA GUÍA');
+  ok('6 líneas de guion', window.ORAL_SEED.script.length === 6);
+  ok('8 preguntas de la guía', window.ORAL_SEED.questions.length === 8);
+  ok('cada pregunta tiene respuesta PT y ES', window.ORAL_SEED.questions.every(function (q) { return q.a && q.aes; }));
+  ok('24 preguntas extra', window.ORAL_SEED.extraQuestions.length >= 20, window.ORAL_SEED.extraQuestions.length);
+  ok('todas las frases del guion tienen traducción', window.ORAL_SEED.script.every(function (l) { return l.es && l.es.length > 10; }));
+
+} catch (e) {
+  falhas++;
+  linhas.push('\nEXCEPCIÓN: ' + e.message + '\n' + (e.stack || ''));
+}
+
+var resumo = '\n──────────────────────────────\n' + (falhas ? '✘ ' + falhas + ' fallas de ' + total : '✔ TODO OK — ' + total + ' tests');
+document.getElementById('out').textContent = resumo + '\n' + linhas.join('\n');
+document.body.setAttribute('data-test-results', falhas ? 'FAIL ' + falhas + '/' + total : 'PASS ' + total);
+</script>
+</body>
+</html>

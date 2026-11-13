@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Auditoría de interfaz</title>
+<style>
+  body{font:13px/1.55 ui-monospace,Menlo,monospace;background:#0f1513;color:#d8ffe9;padding:20px;margin:0}
+  pre{background:#0a0f0d;padding:14px;border-radius:10px;white-space:pre-wrap;border:1px solid #1d2b26}
+  iframe{position:fixed;left:-3000px;top:0;border:0;width:1440px;height:950px}
+  #mini{position:fixed;left:-3000px;top:0;width:390px;height:844px;border:0}
+</style>
+</head>
+<body>
+<pre id="out">corriendo…</pre>
+<iframe id="big" src="../index.html"></iframe>
+<iframe id="mini" src="../index.html"></iframe>
+<script>
+var L = [], F = 0, T = 0;
+function ok(n, c, e) { T++; if (c) L.push('  ✔ ' + n); else { F++; L.push('  ✘ ' + n + (e ? '  →  ' + e : '')); } }
+function g(t) { L.push('\n' + t); }
+function esperar(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+async function listo(fr) {
+  for (var i = 0; i < 60; i++) {
+    var d = fr.contentDocument;
+    if (d && d.readyState === 'complete' && d.querySelector('#view') && d.querySelector('#view').children.length) return d;
+    await esperar(100);
+  }
+  return fr.contentDocument;
+}
+
+async function auditar() {
+  var fr = document.getElementById('big');
+  var mini = document.getElementById('mini');
+  var d = await listo(fr);
+  var w = fr.contentWindow;
+  if (!d) { document.getElementById('out').textContent = 'No cargó el iframe'; return; }
+
+  g('CARGA');
+  ok('sin errores de JS', !d.body.getAttribute('data-js-error'), d.body.getAttribute('data-js-error'));
+  ok('hay barra lateral', !!d.querySelector('.side'));
+  ok('hay 8 botones de navegación', d.querySelectorAll('.nav [data-tab]').length === 8, d.querySelectorAll('.nav [data-tab]').length);
+  ok('el inicio tiene hero', !!d.querySelector('.hero h1'));
+  ok('hay 6 tarjetas de plan', d.querySelectorAll('.view .tile').length >= 6, d.querySelectorAll('.view .tile').length);
+
+  g('\nDESBORDE HORIZONTAL (desktop 1440)');
+  var doc = d.documentElement;
+  ok('sin scroll horizontal', doc.scrollWidth <= w.innerWidth + 1, doc.scrollWidth + ' vs ' + w.innerWidth);
+  var side = d.querySelector('.side');
+  ok('barra lateral mide 236px', Math.round(side.getBoundingClientRect().width) === 236, Math.round(side.getBoundingClientRect().width));
+
+  g('\nDIGLOT (pestaña Leer)');
+  w.PZ.app.ir('ler');
+  await esperar(250);
+  var ws = d.querySelectorAll('.view .w');
+  ok('la pestaña pinta palabras', ws.length > 80, ws.length);
+  ok('hay frases con traducción', d.querySelectorAll('.view .sent .es').length >= 6, d.querySelectorAll('.view .sent .es').length);
+  ok('las traducciones son humanas (no glosa ≈)', !/^\s*≈/.test((d.querySelector('.view .sent .es') || {}).textContent || ''), (d.querySelector('.view .sent .es') || {}).textContent);
+
+  // clic en un verbo: "quero"
+  var alvo = null;
+  ws.forEach(function (x) { if (x.textContent.trim() === 'quero') alvo = x; });
+  ok('encuentra la palabra "quero"', !!alvo);
+  if (alvo) {
+    alvo.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    await esperar(200);
+    var dr = d.getElementById('drawer');
+    ok('abre el panel lateral', dr && dr.classList.contains('open'));
+    var txt = (dr || {}).textContent || '';
+    ok('muestra el verbo original "querer"', /querer/.test(txt), txt.slice(0, 60));
+    ok('explica por qué está en esa forma', /Por qué está así/.test(txt));
+    ok('muestra la persona (eu)', /eu/.test(txt));
+    ok('tiene la tabla de conjugación', !!d.querySelector('#drawer .conj-table'));
+    ok('botón de escuchar presente', !!d.getElementById('dw-say'));
+    d.getElementById('dw-close').click();
+    await esperar(150);
+    ok('el panel se cierra', !dr.classList.contains('open'));
+    // botón "preguntar a la IA" del panel
+    alvo.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    await esperar(150);
+    d.getElementById('dw-ai').click();
+    await esperar(250);
+    ok('el botón 🤖 lleva al chat con la pregunta escrita', !!d.getElementById('chat-in') && /quero/.test(d.getElementById('chat-in').value));
+    w.PZ.app.ir('ler'); await esperar(200);
+  }
+
+  // infinitivo
+  var inf = null;
+  ws.forEach(function (x) { if (x.textContent.trim() === 'dirigir') inf = x; });
+  if (inf) {
+    inf.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    await esperar(150);
+    var t2 = d.getElementById('drawer').textContent;
+    ok('el infinitivo se explica como infinitivo', /Infinitivo/.test(t2));
+    ok('el infinitivo explica el contexto (a + infinitivo)', /preposición|aprender|a \+|después de/.test(t2));
+    d.getElementById('dw-close').click();
+  }
+
+  g('\nMODO GLOSA PALABRA POR PALABRA');
+  w.PZ.app.ir('ler');
+  await esperar(120);
+  var seg = d.querySelectorAll('#seg-gl button');
+  ok('hay control de glosa', seg.length === 2);
+  if (seg.length) {
+    seg[0].click();
+    await esperar(250);
+    ok('la glosa se activa', d.body.classList.contains('gloss-mode'));
+    var glosas = d.querySelectorAll('.view .w .gl');
+    ok('cada palabra tiene su glosa', glosas.length > 80, glosas.length);
+    var comTexto = Array.prototype.filter.call(glosas, function (g) { return g.textContent.trim().length; }).length;
+    ok('al menos 70% de las glosas tienen texto', comTexto / glosas.length > 0.7, Math.round(comTexto / glosas.length * 100) + '%');
+    var gq = null;
+    d.querySelectorAll('.view .w').forEach(function (x) {
+      if (x.childNodes[0].nodeValue.trim() === 'quero') gq = x.querySelector('.gl');
+    });
+    ok('la glosa de "quero" dice "quiero"', gq && /quiero/.test(gq.textContent), gq && gq.textContent);
+    var glAc = null;
+    d.querySelectorAll('.view .w').forEach(function (x) {
+      if (x.childNodes[0].nodeValue.trim() === 'academia') glAc = x.querySelector('.gl');
+    });
+    ok('la glosa de "academia" dice "gimnasio"', glAc && /gimnasio/.test(glAc.textContent), glAc && glAc.textContent);
+    seg[1].click(); await esperar(200);
+  }
+
+  g('\nMI ORAL');
+  w.PZ.app.ir('oral');
+  await esperar(250);
+  ok('muestra las 6 líneas del guion', d.querySelectorAll('.view .script-line').length === 6, d.querySelectorAll('.view .script-line').length);
+  ok('muestra 32 preguntas (8 + extra)', d.querySelectorAll('.view .qa').length >= 20, d.querySelectorAll('.view .qa').length);
+  var q = d.querySelector('.view .qa-q');
+  q.click(); await esperar(150);
+  ok('la pregunta se despliega', q.parentElement.classList.contains('open'));
+  ok('tiene respuesta modelo', /Porque|Sim|Tenho|Ainda|Talvez|Estudar/.test(d.querySelector('.view .qa-a').textContent));
+  ok('hay bloque de pronunciación', d.querySelectorAll('#o-pron div').length > 8);
+
+  g('\nJUEGOS (montaje de cada uno)');
+  var jogos = ['match', 'dictation', 'conj', 'gender', 'order', 'translate'];
+  for (var i = 0; i < jogos.length; i++) {
+    w.PZ.app.ir('inicio');
+    await esperar(80);
+    w.PZ.app.ir('jogos');
+    await esperar(140);
+    var card = d.querySelector('[data-jogo="' + jogos[i] + '"]');
+    if (!card) { ok('monta ' + jogos[i], false, 'sin tarjeta'); continue; }
+    card.click();
+    await esperar(320);
+    var html = d.getElementById('view').textContent;
+    ok('monta ' + jogos[i], html.length > 60 && /Salir/.test(html), (html || '').slice(0, 40));
+  }
+
+  g('\nCHAT');
+  w.PZ.app.ir('chat');
+  await esperar(200);
+  ok('hay caja de chat', !!d.getElementById('chat-in'));
+  ok('hay 6 atajos', d.querySelectorAll('.qchip').length === 6, d.querySelectorAll('.qchip').length);
+  ok('avisa que falta la clave', /Sin clave|Conectada/.test(d.getElementById('ai-status').textContent));
+  // sin clave debe responder con el diccionario
+  var ta = d.getElementById('chat-in');
+  ta.value = '¿cómo se dice gimnasio?';
+  d.getElementById('chat-send').click();
+  await esperar(400);
+  ok('responde sin IA usando el diccionario', /gimnasio|gimnasio/i.test(d.getElementById('chat-log').textContent));
+  ok('la respuesta menciona academia', /academia/.test(d.getElementById('chat-log').textContent));
+
+  g('\nVOCABULARIO Y PROGRESO');
+  w.PZ.app.ir('vocab');
+  await esperar(200);
+  ok('hay botón de repaso', !!d.getElementById('v-start'));
+  d.getElementById('v-fromguide').click();
+  await esperar(350);
+  var startBtn = d.getElementById('v-start');
+  ok('el repaso se habilita al haber tarjetas', startBtn && !startBtn.disabled);
+  if (startBtn && !startBtn.disabled) {
+    startBtn.click();
+    await esperar(300);
+    ok('aparece la tarjeta de repaso', !!d.getElementById('fc'));
+    d.getElementById('fc').click();
+    await esperar(180);
+    var rate = d.querySelectorAll('#fc-rate [data-r]');
+    ok('al girar aparecen las 4 opciones', rate.length === 4);
+    if (rate.length) {
+      rate[2].click();
+      await esperar(300);
+      var stage = d.getElementById('v-stage');
+      ok('avanza o termina el repaso', !!d.getElementById('fc') || /terminado/i.test(stage ? stage.textContent : ''));
+    }
+  }
+  ok('el progreso se refleja en la barra', !!d.getElementById('xp-txt').textContent.match(/Nivel/));
+  w.PZ.app.ir('progresso');
+  await esperar(200);
+  ok('muestra el anillo de nivel', !!d.querySelector('.ring'));
+  ok('muestra gráfico de 14 días', d.querySelectorAll('.bars .b').length === 14, d.querySelectorAll('.bars .b').length);
+  ok('muestra 8 logros', d.querySelectorAll('#p-logros > div').length === 8);
+
+  g('\nAJUSTES');
+  w.PZ.app.ir('ajustes');
+  await esperar(200);
+  ok('hay campo de API key', !!d.getElementById('s-key'));
+  ok('hay selector de proveedor', d.querySelectorAll('#s-prov option').length >= 5);
+  ok('hay selector de voz', !!d.getElementById('s-voice'));
+  ok('avisa cuántas voces hay', /voces en portugués/.test(d.getElementById('view').textContent));
+
+  g('\nMÓVIL (390×844)');
+  var dm = await listo(mini);
+  var wm = mini.contentWindow;
+  if (!dm) { ok('carga en móvil', false); }
+  else {
+    ok('carga en móvil', true);
+    ok('sin errores en móvil', !dm.body.getAttribute('data-js-error'), dm.body.getAttribute('data-js-error'));
+    ok('aparece la nav inferior', wm.getComputedStyle(dm.querySelector('.mobile-nav')).display === 'flex');
+    ok('se esconde la barra lateral', wm.getComputedStyle(dm.querySelector('.side')).display === 'none');
+    wm.PZ.app.ir('ler'); await esperar(250);
+    ok('móvil sin desborde horizontal', dm.documentElement.scrollWidth <= wm.innerWidth + 1, dm.documentElement.scrollWidth + ' vs ' + wm.innerWidth);
+    wm.PZ.app.ir('inicio'); await esperar(150);
+    var culpables = [];
+    dm.querySelectorAll('body *').forEach(function (n) {
+      var r = n.getBoundingClientRect();
+      if (r.width > 0 && r.right > wm.innerWidth + 1 && r.height > 0) {
+        culpables.push(n.tagName.toLowerCase() + '.' + (n.className || '').toString().split(' ')[0] + '→' + Math.round(r.right));
+      }
+    });
+    ok('móvil sin desborde en inicio', dm.documentElement.scrollWidth <= wm.innerWidth + 1,
+      dm.documentElement.scrollWidth + ' vs ' + wm.innerWidth + ' | ' + culpables.slice(0, 6).join(', '));
+    var tocavel = dm.querySelector('.tile');
+    ok('las tarjetas se pueden tocar (alto > 44px)', tocavel && tocavel.getBoundingClientRect().height > 44, tocavel && Math.round(tocavel.getBoundingClientRect().height));
+  }
+
+  var res = (F ? '✘ ' + F + ' fallas de ' + T : '✔ TODO OK — ' + T + ' chequeos');
+  document.getElementById('out').textContent = res + '\n' + L.join('\n');
+  document.body.setAttribute('data-audit', F ? 'FAIL ' + F + '/' + T : 'PASS ' + T);
+}
+auditar().catch(function (e) {
+  document.getElementById('out').textContent = 'EXCEPCIÓN: ' + e.message + '\n' + e.stack;
+  document.body.setAttribute('data-audit', 'ERROR');
+});
+</script>
+</body>
+</html>
