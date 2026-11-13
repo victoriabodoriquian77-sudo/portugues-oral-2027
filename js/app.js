@@ -945,7 +945,7 @@
       '<div class="card pad">' +
       '<h3 style="font-size:16px;margin-bottom:8px">Cómo funciona la IA</h3>' +
       (naWeb()
-        ? '<p class="small muted">Estás usando la <b>versión web</b>. La clave se guarda en este navegador y viaja directo al proveedor que elijas. Algunos proveedores bloquean las conexiones que salen del navegador: si ves un error de conexión, probá con <b>DeepSeek</b> u <b>OpenRouter</b>, o abrí la versión local de la app.</p>'
+        ? '<p class="small muted">Estás usando la <b>versión web</b>: la clave se guarda en este navegador y viaja directo al proveedor que elijas (no pasa por ningún servidor nuestro). Funciona con los cinco proveedores de la lista.</p>'
         : '<p class="small muted">Estás usando la <b>versión local</b>: las consultas pasan por el pequeño servidor de <b>Iniciar app.command</b>, así que no hay problemas de conexión con ningún proveedor.</p>') +
       '<div class="divider"></div>' +
       '<div class="tiny muted">Consejo: para el oral alcanza con DeepSeek u OpenAI. Pegá la clave, guardá y probá. No uses una computadora compartida: la clave queda en ese navegador.</div>' +

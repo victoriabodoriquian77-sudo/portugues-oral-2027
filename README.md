@@ -3,6 +3,13 @@
 App para aprender portugués (de Brasil) desde cero y preparar el **oral de 2027**:
 *Meus objetivos para 2027*.
 
+**Versión web (para el celular o para compartir):**
+<https://victoriabodoriquian77-sudo.github.io/portugues-oral-2027/>
+
+Es la misma app. El link es largo y no aparece en Google: pasáselo solo a quien quieras.
+La versión web guarda tu progreso en *ese* navegador (el del celular es otro progreso que
+el de la compu).
+
 Todo funciona en tu computadora, sin instalar nada y sin crear cuentas. Tu progreso se
 guarda en el navegador.
 
@@ -120,6 +127,7 @@ portugues/
 | «El navegador bloqueó la conexión» | Abrí con `Iniciar app.command` en vez de `index.html`. |
 | «La clave no es válida» | Copiala de nuevo sin espacios; revisá que sea del proveedor que elegiste. |
 | Perdí el progreso | Restaurá el `.json` que exportaste en **Ajustes → Importar**. |
+| En el celular no suena | El iPhone a veces necesita tocar la pantalla una vez antes de reproducir audio. Subí el volumen y probá de nuevo. |
 | No aparece una palabra en el diccionario | Tocá la palabra y usá **🤖 Preguntar**, o pedíselo al chat. |
 
 ---
